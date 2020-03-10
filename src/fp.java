@@ -113,7 +113,7 @@ public class fp {
         if(fb.isNaN())
             return fb.asInt();
         if((fa.isZero()&&fb.isInfinity())||(fb.isZero()&&fa.isInfinity())){
-            result.setF(1);
+            result.setF(255);
             result.setE(255);
             return result.asInt();
         }
@@ -128,8 +128,7 @@ public class fp {
             result.setE(255);
             return result.asInt();
         }
-        int tmpE = fa.e()+fb.e();
-        tmpE = tmpE - 127;
+        int tmpE = fa.e()-127+fb.e();
         if(tmpE>254){
             result.setF(0);
             result.setE(255);
@@ -140,11 +139,16 @@ public class fp {
             return result.asInt();
         }
         long tmpF = fa.f() * fb.f();
-        tmpF = tmpF >> 25;
-        
+
+        tmpF = tmpF >> 26;
+        tmpE++;
+        while(((tmpF>>25)&1)==0){  //Normalization
+            tmpF = tmpF <<1;
+            tmpE--;
+        }
+        tmpF+=2;    //Handle rounding
         result.setE(tmpE);
         result.setF(tmpF);
-        print(result);
         return result.asInt();
     }
 
@@ -163,28 +167,42 @@ public class fp {
         System.out.println(Long.toBinaryString(n));
     }
 
+    public static void testMul(int iterations){
+        for(int i=0;i<iterations;i++){
+            float a = ((float)Math.random());
+            float b = ((float)Math.random());
+            float result = a*b;
+            fp m = new fp();
+            float r = Float.intBitsToFloat(m.mul(Float.floatToIntBits(a), Float.floatToIntBits(b)));
+            System.out.println((r==result));
+        }
+    }
+
     // Here is some test code that one student had written...
     public static void main(String[] args)
     {
         int v24_25	= 0x41C20000; // 24.25
         int v_1875	= 0xBE400000; // -0.1875
         int v5		= 0xC0A00000; // -5.0
-        int v13_75  = 0x415C0000;
-        int v47_625 = 0x423E8000;
+        int z  = 0x0000;
+        int in = 0x7F800000;
+        int nIn = 0xFF800000;
+        int nan = 0x7FBFFFFF;
+
+//        testMul(100);
 
         fp m = new fp();
-        System.out.println(Float.intBitsToFloat(m.mul(v13_75, v47_625)) + " should be  654.84375");
 
-
+//
         System.out.println(Float.intBitsToFloat(m.add(v24_25, v_1875)) + " should be 24.0625");
         System.out.println(Float.intBitsToFloat(m.add(v24_25, v5)) + " should be 19.25");
         System.out.println(Float.intBitsToFloat(m.add(v_1875, v5)) + " should be -5.1875");
 
 
 
-        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v_1875)) + " should be -4.546875");
-        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v5)) + " should be -121.25");
-        System.out.println(Float.intBitsToFloat(m.mul(v_1875, v5)) + " should be 0.9375");
+//        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v_1875)) + " should be -4.546875");
+//        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v5)) + " should be -121.25");
+//        System.out.println(Float.intBitsToFloat(m.mul(v_1875, v5)) + " should be 0.9375");
     }
 
 }
