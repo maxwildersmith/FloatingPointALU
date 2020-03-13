@@ -1,208 +1,205 @@
 public class fp {
     // Be sure to put your name on this next line...
-    public String myName()
-    {
+    public String myName() {
         return "Maximum Wilder-Smith";
     }
 
-    public int add(int a, int b)
-    {
+    public int add(int a, int b) {
         FPNumber fa = new FPNumber(a);
         FPNumber fb = new FPNumber(b);
         FPNumber result = new FPNumber(0);
 
-        //Exception checking
-        if(fa.isNaN()||fb.isNaN()) {
+        //Exception checking if either is NAN
+        if (fa.isNaN() || fb.isNaN()) {
             result.setE(255);
-            result.setF(1);
+            result.setF(255);
+            return result.asInt();
         }
-        if(fa.isZero())
-            result = fb;
 
-        if(fb.isZero())
-            result = fa;
+        // Check if zeros
+        if (fa.isZero())
+            return fb.asInt();
+        if (fb.isZero())
+            return fa.asInt();
 
-        if(fa.isInfinity()&&fb.isInfinity()){
-            if(fa.s()==fb.s())
-                result = fa;
-            else{
-                result.setF(1);
+        // Both are infinity check
+        if (fa.isInfinity() && fb.isInfinity()) {
+            if (fa.s() == fb.s())
+                return fa.asInt();
+            else {
                 result.setE(255);
+                result.setF(255);
+                return result.asInt();
             }
         }
 
-        else if(fa.isInfinity()||fb.isInfinity()){
-            result = fa.isInfinity() ? fa : fb;
+        // Check if either are infinity
+        if (fa.isInfinity() || fb.isInfinity()) {
+            return (fa.isInfinity() ? fa : fb).asInt();
         }
 
-        long tmp;
-
-        if((fa.e()==fb.e()&&fa.f()>fb.f())||fa.e()>fb.e()){  //fa > fb
-            if(fa.s()==fb.s()) {
-                tmp = fa.f() + (fb.f() >> 3);
-            } else {
-                tmp = fa.f() - (fb.f() >> 3);
-                if(tmp==0){
-                    result = new FPNumber(0);
-                }
-            }
-            if(((tmp >> 26) & 1) == 1){
-                result.setF(1);
-                result.setE(255);
-                result.setS(fa.s());
-            } else {
-                int tmpE = fa.e();
-                while(((tmp >> 25) & 1) == 0){
-                    tmp = tmp << 1;
-                    tmpE--;
-                    if(tmpE == 0){
-                        tmp=tmp<<1;
-                        result.setF(tmp);
-                        result.setE(0);
-                        break;
-                    }
-                }
-                result.setF(tmp);
-                result.setE(tmpE);
-                result.setS(fa.s());
-            }
-
+        // Sort numbers
+        FPNumber larger, smaller;
+        if (fa.e() > fb.e() || ((fa.e() == fb.e()) && fa.f() > fb.f())) {
+            larger = fa;
+            smaller = fb;
         } else {
-            if(fa.s()==fb.s()) {
-                tmp = fb.f() + (fa.f() >> 3);
-            } else {
-                tmp = fb.f() - (fa.f() >> 3);
-                if(tmp==0){
-                    result = new FPNumber(0);
-                }
-            }
-            if(((tmp >> 26) & 1) == 1){
-                result.setF(1);
-                result.setE(255);
-                result.setS(fb.s());
-            } else {
-                int tmpE = fb.e();
-                while(((tmp >> 25) & 1) == 0){
-                    tmp = tmp << 1;
-                    tmpE--;
-                    if(tmpE == 0){
-                        tmp=tmp<<1;
-                        result.setF(tmp);
-                        result.setE(0);
-                        break;
-                    }
-                }
-                result.setF(tmp);
-                result.setE(tmpE);
-                result.setS(fb.s());
-            }
+            larger = fb;
+            smaller = fa;
         }
+
+        int eDif = larger.e() - smaller.e();
+
+        // Smaller number is effectively zero
+        if (eDif > 24)
+            return larger.asInt();
+        int tmpE = larger.e();
+        smaller.setF(smaller.f() >> eDif);
+
+        // Check signs and add or subtract
+        long tmpF;
+        if (larger.s() == smaller.s())
+            tmpF = larger.f() + smaller.f();
+        else {
+            tmpF = larger.f() - smaller.f();
+        }
+
+        // Return zero if mantissa is zero
+        if (tmpF == 0) {
+            result.setE(0);
+            result.setF(0);
+            return result.asInt();
+        }
+
+        if (((tmpF >> 26) & 1) == 1) {
+            tmpF = tmpF >> 1;
+            tmpE++;
+        }
+        if (tmpE >= 255) {
+            result.setE(255);
+            result.setF(0);
+            result.setS(larger.s());
+            return result.asInt();
+        }
+
+        // Normalization
+        while (((tmpF >> 25) & 1) == 0) {
+            tmpF = tmpF << 1;
+            tmpE--;
+        }
+
+        // For rounding, roughly
+        tmpF += 2;
+
+        if (tmpE <= 0) {
+            tmpF = tmpF >> 1;
+            tmpE = 0;
+        }
+
+        // Normalization if no longer normalized
+        while (((tmpF >> 25) & 1) == 0) {
+            tmpF = tmpF << 1;
+            tmpE--;
+        }
+        if (tmpE <= 0) {
+            tmpF = tmpF >> 1;
+            tmpE = 0;
+        }
+
+        // Set result and return
+        result.setS(larger.s());
+        result.setE(tmpE);
+        result.setF(tmpF);
 
         return result.asInt();
     }
 
-    public int mul(int a, int b)
-    {
+    public int mul(int a, int b) {
         FPNumber fa = new FPNumber(a);
         FPNumber fb = new FPNumber(b);
         FPNumber result = new FPNumber(0);
 
-        // Put your code in here!
-        if(fa.isNaN())
+        // Check if either are NAN
+        if (fa.isNaN())
             return fa.asInt();
-        if(fb.isNaN())
+        if (fb.isNaN())
             return fb.asInt();
-        if((fa.isZero()&&fb.isInfinity())||(fb.isZero()&&fa.isInfinity())){
+
+        // Check if one is infinity and other is zero
+        if ((fa.isZero() && fb.isInfinity()) || (fb.isZero() && fa.isInfinity())) {
             result.setF(255);
             result.setE(255);
             return result.asInt();
         }
-        if(fa.isZero()||fb.isZero()){
+
+        // Check if one is zero
+        if (fa.isZero() || fb.isZero()) {
             result.setF(0);
             result.setE(0);
             return result.asInt();
         }
-        result.setS((fa.s()^fb.s())<0?-1:0);
-        if(fa.isInfinity()||fb.isInfinity()){
+
+        // Set sign as XOR of the signs
+        result.setS((fa.s() ^ fb.s()) < 0 ? -1 : 0);
+
+        // Check if one of them is infinity
+        if (fa.isInfinity() || fb.isInfinity()) {
             result.setF(0);
             result.setE(255);
             return result.asInt();
         }
-        int tmpE = fa.e()-127+fb.e();
-        if(tmpE>254){
+
+        // Set exponent and remove the bias
+        int tmpE = fa.e() - 127 + fb.e();
+
+        // Check for over/underflow
+        if (tmpE > 254) {
             result.setF(0);
             result.setE(255);
             return result.asInt();
-        } else if(tmpE<0){
+        } else if (tmpE < 0) {
             result.setF(0);
             result.setE(0);
             return result.asInt();
         }
+
+        //Compute mantissa
         long tmpF = fa.f() * fb.f();
 
+        // Shift bits
         tmpF = tmpF >> 26;
         tmpE++;
-        while(((tmpF>>25)&1)==0){  //Normalization
-            tmpF = tmpF <<1;
+
+        // Normalize
+        while (((tmpF >> 25) & 1) == 0) {
+            tmpF = tmpF << 1;
             tmpE--;
         }
-        tmpF+=2;    //Handle rounding
+
+        //Handle rounding
+        tmpF += 2;
+
+
         result.setE(tmpE);
         result.setF(tmpF);
         return result.asInt();
     }
 
-    public static void print(FPNumber n){
-        System.out.print("Mantissa: ");
-        bin(n.f());
-        System.out.print("Exponent: "+n.e()+"  -  ");
-        bin(n.e());
-        System.out.println("Sign: "+n.s());
-    }
-
-    public static void bin(int n){
-        System.out.println(Integer.toBinaryString(n));
-    }
-    public static void bin(long n){
-        System.out.println(Long.toBinaryString(n));
-    }
-
-    public static void testMul(int iterations){
-        for(int i=0;i<iterations;i++){
-            float a = ((float)Math.random());
-            float b = ((float)Math.random());
-            float result = a*b;
-            fp m = new fp();
-            float r = Float.intBitsToFloat(m.mul(Float.floatToIntBits(a), Float.floatToIntBits(b)));
-            System.out.println((r==result));
-        }
-    }
-
     // Here is some test code that one student had written...
-    public static void main(String[] args)
-    {
-        int v24_25	= 0x41C20000; // 24.25
-        int v_1875	= 0xBE400000; // -0.1875
-        int v5		= 0xC0A00000; // -5.0
-        int z  = 0x0000;
-        int in = 0x7F800000;
-        int nIn = 0xFF800000;
-        int nan = 0x7FBFFFFF;
-
-//        testMul(100);
+    public static void main(String[] args) {
+        int v24_25 = 0x41C20000; // 24.25
+        int v_1875 = 0xBE400000; // -0.1875
+        int v5 = 0xC0A00000; // -5.0
 
         fp m = new fp();
 
-//
         System.out.println(Float.intBitsToFloat(m.add(v24_25, v_1875)) + " should be 24.0625");
         System.out.println(Float.intBitsToFloat(m.add(v24_25, v5)) + " should be 19.25");
         System.out.println(Float.intBitsToFloat(m.add(v_1875, v5)) + " should be -5.1875");
 
-
-
-//        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v_1875)) + " should be -4.546875");
-//        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v5)) + " should be -121.25");
-//        System.out.println(Float.intBitsToFloat(m.mul(v_1875, v5)) + " should be 0.9375");
+        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v_1875)) + " should be -4.546875");
+        System.out.println(Float.intBitsToFloat(m.mul(v24_25, v5)) + " should be -121.25");
+        System.out.println(Float.intBitsToFloat(m.mul(v_1875, v5)) + " should be 0.9375");
     }
 
 }
